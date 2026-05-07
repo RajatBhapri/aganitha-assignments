@@ -1,0 +1,215 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const data = (await getCollection('projects'))[0]?.data ?? [];
+---
+
+<BaseLayout>
+  <main class="wrapper stack gap-20">
+
+    <!-- 🔥 HEADER -->
+    <section class="projects-hero">
+      <h1 class="title">Projects</h1>
+      <p class="subtitle">
+        Explore ongoing work and contributors.
+      </p>
+    </section>
+
+    <!-- 🔥 PROJECT GRID -->
+    <section>
+      {
+        data.length > 0 ? (
+          <ul class="projects-grid">
+            {data.map((project) => (
+              <li class="project-card">
+                <a href={`/projects/${project.slug}`} class="project-link">
+
+                  <!-- CONTENT -->
+                  <div class="project-content">
+                    <h3 class="project-title">{project.name}</h3>
+
+                    <p class="project-desc">
+                      {project.description}
+                    </p>
+                  </div>
+
+                  <!-- FOOTER -->
+                  <div class="project-footer">
+
+                    <!-- 👥 PEOPLE -->
+                    <div class="people">
+                      {project.people?.slice(0, 4).map((person) => (
+                        <img
+                          src={`https://github.com/${person}.png`}
+                          alt={person}
+                          title={person}
+                          class="avatar"
+                        />
+                      ))}
+
+                      {project.people?.length > 4 && (
+                        <span class="more">
+                          +{project.people.length - 4}
+                        </span>
+                      )}
+                    </div>
+
+                    <!-- COUNT -->
+                    <span class="count">
+                      {project.people?.length || 0} members
+                    </span>
+
+                  </div>
+
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div class="empty-state">
+            <p>No projects yet 🚀</p>
+            <a href="https://github.com" target="_blank">
+              Start one →
+            </a>
+          </div>
+        )
+      }
+    </section>
+
+  </main>
+</BaseLayout>
+
+<style>
+
+/* 🔥 HERO */
+.projects-hero {
+  text-align: center;
+}
+
+.title {
+  font-size: var(--text-4xl);
+  font-weight: 700;
+}
+
+.subtitle {
+  margin-top: 0.5rem;
+  color: var(--gray-400);
+  font-size: 0.9rem;
+}
+
+/* 🔥 GRID */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+/* 🔥 CARD */
+.project-card {
+  list-style: none;
+}
+
+/* 🔥 LINK WRAPPER */
+.project-link {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  padding: 1.4rem;
+  border-radius: 1.2rem;
+  border: 1px solid var(--gray-800);
+  background: var(--gradient-subtle);
+
+  min-height: 180px;
+
+  text-decoration: none;
+  color: inherit;
+
+  transition: all 0.18s ease;
+}
+
+/* HOVER */
+.project-link:hover {
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+  border-color: var(--accent-regular);
+}
+
+/* CONTENT */
+.project-content {
+  flex-grow: 1;
+}
+
+.project-title {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--gray-0);
+}
+
+.project-desc {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+  margin-top: 0.6rem;
+  line-height: 1.4;
+}
+
+/* FOOTER */
+.project-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-top: 1rem;
+}
+
+/* 👥 PEOPLE */
+.people {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+
+  margin-left: -6px;
+  border: 2px solid var(--gray-900);
+}
+
+.avatar:first-child {
+  margin-left: 0;
+}
+
+/* +MORE */
+.more {
+  margin-left: 6px;
+  font-size: 0.7rem;
+  color: var(--gray-400);
+}
+
+/* COUNT */
+.count {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+}
+
+/* EMPTY */
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: var(--gray-400);
+}
+
+.empty-state a {
+  display: inline-block;
+  margin-top: 0.5rem;
+  color: var(--accent-regular);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+</style>

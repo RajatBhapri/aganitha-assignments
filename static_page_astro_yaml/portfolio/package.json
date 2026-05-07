@@ -1,0 +1,36 @@
+{
+  "name": "@example/portfolio",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build && npx pagefind --site dist",
+    "preview": "astro preview",
+    "astro": "astro",
+    "data": "node scripts/generateProfiles.js",
+    "sync": "node scripts/syncContent.js",
+    "validate": "node scripts/validateContent.js",
+    "build:all": "npm run validate && astro build && npx pagefind --site dist",
+    "shoot": "git pull && astro build && npx pagefind --site dist && astro preview",
+    "profiles": "node scripts/fetchProfiles.js"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^10.4.0",
+    "astro": "^6.1.7",
+    "axios": "^1.15.0",
+    "better-sqlite3": "^12.9.0",
+    "fs-extra": "^11.3.4",
+    "gray-matter": "^4.0.3",
+    "js-yaml": "^4.1.1",
+    "marked": "^18.0.2",
+    "pagefind": "^1.5.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0"
+  }
+}

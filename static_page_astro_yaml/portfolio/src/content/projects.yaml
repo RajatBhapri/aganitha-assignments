@@ -1,0 +1,71 @@
+- name: Distributed Logging Platform
+  slug: distributed-logging-platform
+  description: A scalable system for collecting, processing, and visualizing logs across distributed services.
+  tech:
+    - Node.js
+    - Kafka
+    - Elasticsearch
+    - Docker
+  status: In Production
+  teamSize: 4
+  people:
+    - rajat-acog
+    - harleen-acog
+    - swati-acog
+
+- name: Real-time Analytics Engine
+  slug: realtime-analytics-engine
+  description: Processes streaming data in real-time and provides insights via dashboards and APIs.
+  tech:
+    - Kafka
+    - Redis
+    - Node.js
+    - AWS
+  status: Scaling
+  teamSize: 5
+  people:
+    - rajat-acog
+    - harleen-acog
+
+- name: Cloud-native Deployment System
+  slug: cloud-native-deployment-system
+  description: Automates CI/CD pipelines and container orchestration for microservices.
+  tech:
+    - Docker
+    - Kubernetes
+    - GitHub Actions
+    - AWS
+  status: Development
+  teamSize: 3
+  people:
+    - swati-acog
+    - harleen-acog
+
+- name: Secure API Gateway
+  slug: secure-api-gateway
+  description: Handles authentication, rate limiting, and routing for backend services.
+  tech:
+    - Node.js
+    - Redis
+    - JWT
+    - Nginx
+  status: In Production
+  teamSize: 4
+  people:
+    - rajat-acog
+    - swati-acog
+
+- name: Aganitha Assignment Project
+  slug: aganitha assignment project
+  description: A scalable system for collecting, processing, and visualizing logs across distributed services.
+  tech:
+    - Node.js
+    - Kafka
+    - Elasticsearch
+    - Docker
+  status: In Production
+  teamSize: 4
+  people:
+    - rajat-acog
+    - harleen-acog
+    - swati-acog

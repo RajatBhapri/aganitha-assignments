@@ -1,0 +1,866 @@
+  ---
+  import fs from 'fs';
+  import path from 'path';
+  import matter from 'gray-matter';
+  import { marked } from 'marked';
+  import { getCollection } from 'astro:content';
+
+  import ContactCTA from '../../../components/ContactCTA.astro';
+  import Hero from '../../../components/Hero.astro';
+  import Icon from '../../../components/Icon.astro';
+  import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+  const OWNER = "rajat-acog";
+  const REPO = "portfolio-website";
+
+  export async function getStaticPaths() {
+    const base = './src/content/portfolios';
+    const users = fs.readdirSync(base);
+
+    const paths = [];
+
+    for (const user of users) {
+      const userDir = path.join(base, user);
+      if (!fs.statSync(userDir).isDirectory()) continue;
+
+      const files = fs.readdirSync(userDir);
+
+      files
+        .filter((f) => f.endsWith('.md'))
+        .forEach((file) => {
+          paths.push({
+            params: {
+              slug: user,
+              blog: file.replace('.md', ''),
+            },
+          });
+        });
+    }
+
+    return paths;
+  }
+
+  const { slug, blog } = Astro.params;
+
+  const filePath = path.join(
+    'src/content/portfolios',
+    slug,
+    `${blog}.md`
+  );
+
+  const file = fs.readFileSync(filePath, 'utf-8');
+  const { data, content } = matter(file);
+
+  // 🔥 CONTRIBUTORS
+  const githubFilePath = `portfolio/src/content/portfolios/${slug}/${blog}.md`;
+
+  let contributors = [];
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${OWNER}/${REPO}/commits?path=${githubFilePath}`
+    );
+
+    const githubData = await res.json();
+
+    if (Array.isArray(githubData)) {
+      contributors = [
+        ...new Map(
+          githubData
+            .filter((c) => c.author?.login && c.author?.login !== "web-flow")
+            .map((c) => [
+              c.author.login,
+              {
+                username: c.author.login,
+                avatar: c.author.avatar_url,
+                url: c.author.html_url,
+              },
+            ])
+        ).values(),
+      ];
+    }
+  } catch (err) {
+    console.error(err);
+  }
+
+  // 🔥 MATCH PROFILES
+  const allProfiles = await getCollection('portfolios');
+
+  const finalContributors = contributors
+    .map((c) => {
+      const username = c.username.toLowerCase();
+
+      const profile = allProfiles.find((p) =>
+        p.id.split('/')[0].toLowerCase() === username
+      );
+
+      return {
+        ...c,
+        slug: username,
+        isInternal: !!profile,
+      };
+    })
+    .filter((c) => (contributors.length > 1 ? c.slug !== slug : true));
+
+ // 🔥 HEADINGS
+const headings = [];
+
+// ✅ SAME slug logic used everywhere
+const slugify = (text) =>
+  text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .trim()
+    .replace(/\s+/g, "-");
+
+content.replace(/^##\s*(.+)$/gm, (_, title) => {
+  const cleanTitle = title.trim();
+
+  headings.push({
+    title: cleanTitle
+      .replace(/^#+\s*/, "")
+      .replace(/[^\p{L}\p{N}\s]/gu, "")
+      .trim(),
+    id: slugify(cleanTitle),
+  });
+});
+
+  // ✅ LET MARKED DO NORMAL PARSING
+  const html = marked.parse(content);
+  ---
+
+  <BaseLayout title={data.title}>
+    <div class="page">
+
+      <!-- 🔥 PAGEFIND META -->
+      <div
+        data-pagefind-filter={`type:blog`}
+        data-pagefind-filter={`author:${data.author}`}
+        data-pagefind-meta="title"
+        style="display:none"
+      >
+        {data.title}
+      </div>
+
+      <header class="header wrapper">
+        <a class="back-link" href={`/portfolio/${slug}`}>
+          <Icon icon="arrow-left" /> Back to Profile
+        </a>
+
+        <div class="blog-header">
+          <Hero title={data.title} tagline={`By ${data.author}`} align="start" />
+
+  <div class="contributors-inline">
+    {
+      (() => {
+        // ✅ Merge author + contributors
+        const authorUsername = data.author?.toLowerCase();
+
+        const mergedContributors = [...finalContributors];
+
+        if (authorUsername) {
+          const exists = mergedContributors.some(
+            (c) => c.username.toLowerCase() === authorUsername
+          );
+
+          if (!exists) {
+            mergedContributors.unshift({
+              username: authorUsername,
+              avatar: `https://github.com/${authorUsername}.png`,
+              url: `https://github.com/${authorUsername}`,
+              slug: authorUsername,
+              isInternal: true,
+              isAuthor: true,
+            });
+          } else {
+            // mark existing one as author
+            mergedContributors.forEach((c) => {
+              if (c.username.toLowerCase() === authorUsername) {
+                c.isAuthor = true;
+              }
+            });
+          }
+        }
+
+        return mergedContributors.length > 0 ? (
+          <div class="contributors-mini">
+            <span class="label">Contributors:</span>
+
+            <div class="contributors-list">
+              {mergedContributors.map((c) => (
+                <a
+                  href={c.isInternal ? `/portfolio/${c.slug}` : c.url}
+                  class="contributor-item"
+                  title={c.username}
+                >
+                  {c.avatar ? (
+                    <img src={c.avatar} alt={c.username} />
+                  ) : (
+                    <span class="fallback">
+                      {c.username.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+
+                  <span class="name">
+                    {c.username}
+                    {c.isAuthor && (
+                      <span style="margin-left:4px; font-size:0.6rem; opacity:0.7;">
+                        (author)
+                      </span>
+                    )}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <span class="muted">No contributors</span>
+        );
+      })()
+    }
+  </div>
+
+      <div class="layout wrapper">
+
+        <aside class="sidebar">
+  <div class="sidebar-inner">
+    <h4>On this page</h4>
+
+    {
+      headings.length > 0 ? (
+        <ul class="toc">
+          {headings.map((h) => (
+            <li>
+              <a
+                href={`#${h.id}`}
+                class="toc-link"
+                onclick={`event.preventDefault(); document.getElementById('${h.id}')?.scrollIntoView({ behavior: 'smooth', block: 'start' });`}
+              >
+                {h.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="muted">No sections found</p>
+      )
+    }
+  </div>
+</aside>
+
+        <!-- 🔥 SEARCHABLE CONTENT -->
+        <main class="content" data-pagefind-body>
+          <p data-pagefind-meta="author" style="display:none">
+            {data.author}
+          </p>
+
+          <article class="blog-content" set:html={html}></article>
+
+<script>
+  // ✅ select BOTH h2 and h3
+  const sections = document.querySelectorAll(".blog-content h2, .blog-content h3");
+  const links = document.querySelectorAll(".toc-link");
+
+  // ✅ assign IDs (index based, safe)
+  sections.forEach((section, i) => {
+    section.id = `section-${i}`;
+  });
+
+  // ✅ map sidebar links to sections
+  links.forEach((link, i) => {
+    const target = sections[i];
+    if (!target) return;
+
+    link.setAttribute("href", `#${target.id}`);
+
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  });
+
+  // ✅ active highlight
+  window.addEventListener("scroll", () => {
+    let current = "";
+
+    sections.forEach((section) => {
+      const top = section.offsetTop - 140;
+      if (window.scrollY >= top) {
+        current = section.id;
+      }
+    });
+
+    links.forEach((link) => {
+      link.classList.remove("active");
+      if (link.getAttribute("href") === `#${current}`) {
+        link.classList.add("active");
+      }
+    });
+  });
+</script>
+        </main>
+
+      </div>
+
+      <ContactCTA />
+    </div>
+  </BaseLayout>
+
+
+  <style>
+
+  /* ================= LAYOUT ================= */
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 2.8rem;
+    margin-top: 3rem;
+  }
+
+  @media (max-width: 900px) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+    .sidebar {
+      display: none;
+    }
+  }
+
+  /* ================= SIDEBAR ================= */
+  .sidebar-inner {
+    position: sticky;
+    top: 100px;
+    padding: 1.2rem;
+    border-radius: 1rem;
+    border: 1px solid var(--gray-800);
+    background: rgba(255,255,255,0.02);
+    backdrop-filter: blur(10px);
+  }
+
+  .sidebar a {
+    text-decoration: none;
+    font-size: 0.85rem;
+    color: var(--gray-400);
+    transition: 0.2s;
+  }
+
+  .sidebar a:hover {
+    color: var(--accent-regular);
+  }
+
+  .sidebar a.active {
+    color: var(--accent-regular);
+    font-weight: 600;
+  }
+
+  /* ================= CONTENT ================= */
+  .content {
+    background: rgba(255,255,255,0.015);
+    border: 1px solid var(--gray-800);
+    border-radius: 1.5rem;
+    padding: 3.2rem 2.8rem;
+
+    /* cleaner shadow */
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+  }
+
+  /* ================= BACK LINK ================= */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+
+    border: 1px solid var(--gray-800);
+    background: rgba(255,255,255,0.03);
+
+    font-size: 0.75rem;
+    color: var(--gray-300);
+    text-decoration: none;
+
+    transition: 0.2s;
+  }
+
+  .back-link:hover {
+    background: var(--gray-800);
+    color: var(--accent-regular);
+  }
+
+  /* ================= CONTRIBUTORS ================= */
+  .contributors-mini {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .label {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+  }
+
+  .contributors-list {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .contributor-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--gray-800);
+
+    font-size: 0.7rem;
+    color: var(--gray-300);
+
+    text-decoration: none;
+    transition: 0.2s;
+  }
+
+  .contributor-item:hover {
+    transform: translateY(-2px);
+    background: var(--gray-800);
+  }
+
+  .contributor-item img,
+  .fallback {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+  }
+
+  /* ================= BLOG CONTENT ================= */
+  :global(.blog-content) {
+    max-width: 760px;
+    margin: 0 auto;
+
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 1.05rem;
+    line-height: 1.9;
+    letter-spacing: 0.01em;
+
+    color: var(--gray-300);
+  }
+
+  /* ================= HEADINGS ================= */
+  :global(.blog-content h1) {
+    font-size: 2.6rem;
+    margin: 3rem 0 1.2rem;
+    font-weight: 700;
+    color: var(--gray-0);
+  }
+
+  :global(.blog-content h2) {
+    font-size: 1.7rem;
+    margin: 2.5rem 0 1rem;
+    font-weight: 600;
+    color: var(--gray-0);
+  }
+
+  :global(.blog-content h3) {
+    font-size: 1.25rem;
+    margin: 2rem 0 0.6rem;
+    font-weight: 600;
+    color: var(--gray-100);
+  }
+
+  /* ================= PARAGRAPH ================= */
+  :global(.blog-content p) {
+    margin-bottom: 1.5rem;
+  }
+
+  /* ================= LINKS ================= */
+  :global(.blog-content a) {
+    color: var(--accent-regular);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  :global(.blog-content a:hover) {
+    text-decoration: underline;
+  }
+
+  /* ================= LIST ================= */
+  :global(.blog-content ul),
+  :global(.blog-content ol) {
+    padding-left: 1.6rem;
+    margin-bottom: 1.5rem;
+  }
+
+  :global(.blog-content li) {
+    margin-bottom: 0.4rem;
+  }
+
+  /* ================= BLOCKQUOTE ================= */
+  :global(.blog-content blockquote) {
+    margin: 2rem 0;
+    padding: 1.2rem 1.4rem;
+
+    border-left: 3px solid var(--accent-regular);
+    background: rgba(255,255,255,0.02);
+
+    border-radius: 0.5rem;
+    font-style: italic;
+  }
+
+  /* ================= CODE ================= */
+  :global(.blog-content code) {
+    background: rgba(255,255,255,0.06);
+    padding: 0.25rem 0.45rem;
+    border-radius: 0.35rem;
+    font-size: 0.85rem;
+  }
+
+  :global(.blog-content pre) {
+    margin: 2rem 0;
+    padding: 1.2rem;
+
+    border-radius: 0.9rem;
+    background: #0b1220;
+
+    border: 1px solid rgba(255,255,255,0.08);
+    overflow-x: auto;
+  }
+
+  :global(.blog-content pre code) {
+    background: none;
+    padding: 0;
+  }
+
+  /* ================= IMAGE ================= */
+  :global(.blog-content img) {
+    width: 100%;
+    margin: 2rem 0;
+
+    border-radius: 0.8rem;
+    border: 1px solid var(--gray-800);
+  }
+
+  /* ================= TABLE ================= */
+  :global(.blog-content table) {
+    width: 100%;
+    margin: 2rem 0;
+    border-collapse: collapse;
+  }
+
+  :global(.blog-content th) {
+    background: var(--gray-900);
+    padding: 0.7rem;
+  }
+
+  :global(.blog-content td) {
+    padding: 0.7rem;
+    border-top: 1px solid var(--gray-800);
+  }
+
+  /* ================= HR (FIX ---) ================= */
+  :global(.blog-content hr) {
+    border: none;
+    height: 1px;
+    margin: 3rem 0;
+
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(255,255,255,0.12),
+      transparent
+    );
+  }
+
+  /* ================= CLEAN ENTRY ================= */
+  :global(.blog-content > *) {
+    animation: fadeUp 0.35s ease both;
+  }
+
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* ================= BLOG CONTENT (TIGHT PRO VERSION) ================= */
+  :global(.blog-content) {
+    max-width: 740px;
+    margin: 0 auto;
+
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 1.05rem;
+    line-height: 1.8;
+
+    color: var(--gray-300);
+  }
+
+  /* ================= HEADINGS ================= */
+  :global(.blog-content h1) {
+    font-size: 2.4rem;
+    font-weight: 700;
+
+    margin: 2.4rem 0 1rem;
+    color: var(--gray-0);
+  }
+
+  :global(.blog-content h2) {
+    font-size: 1.65rem;
+    font-weight: 600;
+
+    margin: 2rem 0 0.8rem;
+
+    color: var(--gray-0);
+
+    position: relative;
+    padding-left: 0.7rem;
+  }
+
+  :global(.blog-content h2::before) {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 5px;
+
+    height: 65%;
+    width: 3px;
+
+    border-radius: 2px;
+    background: var(--accent-regular);
+
+    opacity: 0.6;
+  }
+
+  :global(.blog-content h3) {
+    font-size: 1.2rem;
+    font-weight: 600;
+
+    margin: 1.6rem 0 0.4rem;
+
+    color: var(--gray-100);
+  }
+
+  /* ================= PARAGRAPH ================= */
+  :global(.blog-content p) {
+    margin-bottom: 1.2rem;
+  }
+
+  /* ================= LINKS ================= */
+  :global(.blog-content a) {
+    color: var(--accent-regular);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: 0.2s;
+  }
+
+  :global(.blog-content a:hover) {
+    border-bottom: 1px solid var(--accent-regular);
+  }
+
+  /* ================= LIST ================= */
+  :global(.blog-content ul),
+  :global(.blog-content ol) {
+    padding-left: 1.4rem;
+    margin-bottom: 1.2rem;
+  }
+
+  :global(.blog-content li) {
+    margin-bottom: 0.35rem;
+  }
+
+  /* ================= BLOCKQUOTE ================= */
+  :global(.blog-content blockquote) {
+    margin: 1.8rem 0;
+    padding: 1rem 1.2rem;
+
+    border-left: 3px solid var(--accent-regular);
+
+    background: rgba(255,255,255,0.03);
+
+    border-radius: 0.5rem;
+    font-style: italic;
+  }
+
+  /* ================= INLINE CODE ================= */
+  :global(.blog-content code) {
+    background: rgba(255,255,255,0.06);
+    padding: 0.2rem 0.45rem;
+    border-radius: 0.3rem;
+
+    font-size: 0.85rem;
+    color: #ffb86c;
+  }
+
+  /* ================= CODE BLOCK ================= */
+  :global(.blog-content pre) {
+    margin: 2rem 0;
+    padding: 1.1rem;
+
+    border-radius: 0.8rem;
+
+    background: linear-gradient(145deg, #0f172a, #020617);
+    border: 1px solid rgba(255,255,255,0.08);
+
+    overflow-x: auto;
+  }
+
+  :global(.blog-content pre code) {
+    background: none;
+    padding: 0;
+  }
+
+  /* ================= IMAGE ================= */
+  :global(.blog-content img) {
+    width: 100%;
+    margin: 2rem 0;
+
+    border-radius: 0.8rem;
+    border: 1px solid var(--gray-800);
+
+    transition: 0.25s ease;
+  }
+
+  /* 🔥 subtle pro hover */
+  :global(.blog-content img:hover) {
+    transform: scale(1.01);
+  }
+
+  /* ================= TABLE ================= */
+  :global(.blog-content table) {
+    width: 100%;
+    margin: 2rem 0;
+    border-collapse: collapse;
+  }
+
+  :global(.blog-content th) {
+    background: var(--gray-900);
+    padding: 0.6rem;
+  }
+
+  :global(.blog-content td) {
+    padding: 0.6rem;
+    border-top: 1px solid var(--gray-800);
+  }
+
+  /* ================= HR (--- FIX) ================= */
+  :global(.blog-content hr) {
+    border: none;
+    height: 1px;
+    margin: 2.5rem 0;
+
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(255,255,255,0.12),
+      transparent
+    );
+  }
+
+  /* ================= TEXT SELECTION (PRO TOUCH) ================= */
+  :global(.blog-content ::selection) {
+    background: var(--accent-regular);
+    color: black;
+  }
+
+  /* ================= CLEAN SPACING ================= */
+  :global(.blog-content > *:first-child) {
+    margin-top: 0;
+  }
+
+  :global(.blog-content > *:last-child) {
+    margin-bottom: 0;
+  }
+
+  /* ================= SMOOTH ENTRY ================= */
+  :global(.blog-content > *) {
+    animation: fadeUp 0.3s ease both;
+  }
+
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .toc {
+  list-style: none;
+  padding-left: 0;
+}
+
+.toc-link {
+  display: block;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.4rem;
+  transition: 0.2s;
+}
+
+.toc-link:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+/* ================= SIDEBAR TITLE ================= */
+.sidebar-inner h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  color: var(--gray-500);
+  margin-bottom: 0.9rem;
+}
+
+/* ================= TOC LIST ================= */
+.toc {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+/* ================= TOC LINKS ================= */
+.toc-link {
+  display: block;
+
+  font-size: 0.8rem;
+  font-weight: 500;
+
+  color: var(--gray-400);
+
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.45rem;
+
+  line-height: 1.4;
+
+  transition: all 0.2s ease;
+}
+
+/* hover feel */
+.toc-link:hover {
+  color: var(--gray-100);
+  background: rgba(255,255,255,0.05);
+  transform: translateX(3px);
+}
+
+/* active state (your scroll script uses .active) */
+.toc-link.active {
+  color: var(--accent-regular);
+  background: rgba(255,255,255,0.06);
+  font-weight: 600;
+}
+
+  </style>

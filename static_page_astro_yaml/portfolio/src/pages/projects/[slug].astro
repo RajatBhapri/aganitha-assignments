@@ -1,0 +1,176 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const data = (await getCollection('projects'))[0]?.data ?? [];
+
+  return data.map((project) => ({
+    params: { slug: project.slug },
+  }));
+}
+
+const { slug } = Astro.params;
+
+const projects = (await getCollection('projects'))[0]?.data ?? [];
+const project = projects.find((p) => p.slug === slug);
+
+if (!project) throw new Error('Project not found');
+
+// ✅ ALL BLOG ENTRIES (MD BASED)
+const people = await getCollection('portfolios');
+
+// 🔥 UNIQUE MEMBERS (FIXED LOGIC)
+const membersMap = new Map();
+
+people.forEach((p) => {
+  const username = p.id?.split('/')[0];
+
+  if (
+    username &&
+    project.people.includes(username) &&
+    !membersMap.has(username)
+  ) {
+    membersMap.set(username, {
+      slug: username,
+      name: p.data.author || username,
+      position: p.data.position || "Contributor",
+    });
+  }
+});
+
+const members = Array.from(membersMap.values());
+---
+
+<BaseLayout title={project.name}>
+  <main class="wrapper"  data-pagefind-filter="type:project">
+
+    <div
+  data-pagefind-body
+  data-pagefind-filter="type:project"
+  data-pagefind-url={`/projects/${project.slug}`}
+>
+
+  <h1 data-pagefind-weight="10">{project.name}</h1>
+
+  <p data-pagefind-weight="5">{project.description}</p>
+
+</div>
+
+    <!-- ❌ IGNORE REST -->
+    <div data-pagefind-ignore>
+
+      <p class="desc">{project.description}</p>
+
+      <div class="meta">
+        {project.status && <span>🚀 {project.status}</span>}
+        {project.teamSize && <span>👥 Team: {project.teamSize}</span>}
+      </div>
+
+      <!-- 🔥 PEOPLE SECTION -->
+      <h3 class="addmarg">People Assigned</h3>
+
+      <div class="grid">
+        {
+          members.length > 0 ? (
+            members.map((person) => (
+              <a href={`/portfolio/${person.slug}`} class="card">
+
+                <!-- ✅ LETTER AVATAR -->
+                <div class="avatar">
+                  {person.name.charAt(0).toUpperCase()}
+                </div>
+
+                <h3>{person.name}</h3>
+                <p>{person.position}</p>
+
+              </a>
+            ))
+          ) : (
+            <p>No members assigned.</p>
+          )
+        }
+      </div>
+
+    </div>
+
+  </main>
+</BaseLayout>
+
+<style>
+.desc {
+  margin: 1rem 0 1rem;
+  color: var(--gray-300);
+  max-width: 60ch;
+  line-height: 1.6;
+}
+
+/* META */
+.meta {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  font-size: var(--text-sm);
+  color: var(--gray-400);
+}
+
+/* TITLE */
+.addmarg {
+  margin-top: 3rem;
+  margin-bottom: 2rem;
+}
+
+/* GRID */
+.grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  margin-bottom: 3rem;
+}
+
+/* CARD */
+.card {
+  padding: 0.8rem;
+  border-radius: 0.8rem;
+  border: 1px solid var(--gray-800);
+  text-decoration: none;
+  color: inherit;
+  text-align: center;
+
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 🔥 LETTER AVATAR */
+.avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: var(--accent-regular);
+  color: white;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-weight: bold;
+  font-size: 1.5rem;
+
+  margin: 0 auto 0.5rem;
+}
+
+/* TEXT */
+.card h3 {
+  font-size: var(--text-sm);
+  margin-bottom: 0.2rem;
+}
+
+.card p {
+  font-size: var(--text-xs);
+  color: var(--gray-400);
+}
+</style>

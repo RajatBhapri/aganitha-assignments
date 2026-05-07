@@ -1,0 +1,803 @@
+---
+import { getCollection } from 'astro:content';
+
+// Components
+import CallToAction from '../../components/CallToAction.astro';
+import ContactCTA from '../../components/ContactCTA.astro';
+import Grid from '../../components/Grid.astro';
+import Hero from '../../components/Hero.astro';
+import Icon from '../../components/Icon.astro';
+import Pill from '../../components/Pill.astro';
+import Skills from '../../components/Skills.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+// ✅ Dynamic routes (based on folders)
+export async function getStaticPaths() {
+  const entries = await getCollection('portfolios');
+
+  const uniqueUsers = [
+    ...new Set(
+      entries
+        .map((e) => e.id?.split('/')[0])
+        .filter(Boolean)
+    ),
+  ];
+
+  return uniqueUsers.map((slug) => ({
+    params: { slug },
+  }));
+}
+
+// ✅ Get slug
+const { slug } = Astro.params;
+
+
+
+// ✅ ALL BLOG FILES
+const entries = await getCollection('portfolios');
+
+// ✅ FILTER BLOGS FOR THIS USER
+const userBlogs = entries
+  .filter((e) => e.id.startsWith(`${slug}/`))
+  .sort((a, b) => {
+    const dateA = new Date(a.data.date || 0);
+    const dateB = new Date(b.data.date || 0);
+    return dateB - dateA; // latest first
+  });
+
+// ✅ DERIVE PROFILE FROM FIRST BLOG
+
+const profiles = (await getCollection('profiles'))[0]?.data || {};
+
+const profile = profiles[slug];
+
+const firstBlog = userBlogs[0];
+
+const profileData = {
+  ...(firstBlog?.data || {}),
+  ...(profile || {}),
+};
+
+const hero = {
+  title: `Hi, I'm ${profile?.name ?? firstBlog?.data.author ?? slug}`,
+  tagline: profile?.bio || firstBlog?.data.position,
+  image: profile?.avatar || `https://github.com/${slug}.png`,
+};
+
+// 🔥 PROJECTS FROM YAML
+const allProjects = (await getCollection('projects'))[0]?.data ?? [];
+
+const projects = allProjects.filter((project) =>
+  project.people.includes(slug)
+);
+---
+
+<BaseLayout
+  data-pagefind-body
+  data-pagefind-filter="type:profile"
+  data-pagefind-meta="title: {hero.title}"
+>
+  <div class="stack gap-20 lg:gap-20">
+
+    <!-- HERO -->
+    <div class="wrapper stack gap-8 lg:gap-20">
+      <header class="hero upgraded-hero">
+
+  <!-- LEFT: TEXT -->
+  <div class="hero-content">
+    <Hero title={hero.title} tagline={hero.tagline} align="start">
+      <div class="roles">
+        {hero.roles?.map((role) => (
+          <Pill>{role.name}</Pill>
+        ))}
+      </div>
+    </Hero>
+
+    <!-- 🔥 STATS -->
+    <div class="stats">
+      <div class="stat">
+        <span class="value">{projects.length}</span>
+        <span class="label">Projects</span>
+      </div>
+
+      <div class="stat">
+        <span class="value">{userBlogs.length}</span>
+        <span class="label">Blogs</span>
+      </div>
+    </div>
+
+    <!-- 🔥 GITHUB BUTTON -->
+  <div class="profile-links">
+  {profileData?.github && (
+    <a href={profileData.github} target="_blank">GitHub</a>
+  )}
+
+  {profileData?.linkedin && (
+    <a href={profileData.linkedin} target="_blank">LinkedIn</a>
+  )}
+
+  {profileData?.email && (
+    <a href={`mailto:${profileData.email}`}>
+      {profileData.email}
+    </a>
+  )}
+
+  {profileData?.phone && (
+    <a href={`tel:${profileData.phone}`}>
+      {profileData.phone}
+    </a>
+  )}
+</div>
+{profileData?.tags && profileData.tags.length > 0 && (
+  <div class="profile-tags">
+    {profileData.tags.map((tag) => (
+      <span class="tag-pill">
+        <Pill>#{tag}</Pill>
+      </span>
+    ))}
+  </div>
+)}
+  </div>
+
+  <!-- RIGHT: AVATAR -->
+  <div class="hero-avatar">
+    {
+      hero.image ? (
+        <img src={hero.image} alt={slug} class="avatar-img" />
+      ) : (
+        <div class="avatar">
+          {(firstBlog?.data.author ?? slug).charAt(0).toUpperCase()}
+        </div>
+      )
+    }
+  </div>
+
+</header>
+
+
+      <Skills />
+
+
+<!-- 🔥 ACTIVITY TIMELINE -->
+<section class="activity-section wrapper">
+  <h3 class="activity-heading">Recent Activity</h3>
+
+  {
+    userBlogs.length > 0 ? (
+      <ul class="timeline">
+        {userBlogs.slice(0, 5).map((blog) => (
+          <li class="timeline-item">
+            <div class="timeline-dot"></div>
+
+            <div class="timeline-content">
+              <a
+                href={`/portfolio/${slug}/${blog.id.split('/')[1]}`}
+                class="timeline-link"
+              >
+                {blog.data.title}
+              </a>
+
+              <span class="timeline-date">
+                {blog.data.date
+                  ? new Date(blog.data.date).toLocaleDateString()
+                  : "Recently"}
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p class="muted">No recent activity</p>
+    )
+  }
+</section>
+
+
+    </div>
+
+    <!-- MAIN -->
+    <main class="wrapper stack gap-20 lg:gap-20" data-pagefind-body>
+
+      <!-- PROJECTS -->
+      <section class="section with-background with-cta">
+        <header class="section-header stack gap-2 lg:gap-4">
+          <h3>Projects</h3>
+        </header>
+        <p class="header-tagline" >Projects this person is contributing to.</p>
+
+        <div class="gallery">
+          <ul class="projects">
+            {
+              projects.length > 0 ? (
+                projects.map((project) => (
+                  <li class="project-card">
+  <a
+    href={`/projects/${project.slug}`}
+    class="project-link"
+  >
+    <div class="project-content">
+
+      <h4 class="project-title">{project.name}</h4>
+
+      <p class="project-desc">
+        {project.description}
+      </p>
+
+    </div>
+
+    <div class="project-footer">
+      <span>Explore →</span>
+    </div>
+  </a>
+</li>
+                ))
+              ) : (
+                <p>No projects assigned.</p>
+              )
+            }
+          </ul>
+        </div>
+
+        <div class="cta">
+          <CallToAction href={`/projects`}>
+            View All Projects
+            <Icon icon="arrow-right" size="1.2em" />
+          </CallToAction>
+        </div>
+      </section>
+
+      <!-- BLOGS -->
+      <section class="section with-background bg-variant">
+        <header class="section-header stack gap-2 lg:gap-4">
+          <h3>Blogs</h3>
+        </header>
+
+        <div class="gallery">
+          <Grid variant="small">
+            {
+              userBlogs.length > 0 ? (
+                userBlogs.map((blog) => (
+                  <li class="blog-card">
+  <a
+    href={`/portfolio/${slug}/${blog.id.split('/')[1]}`}
+    class="blog-link"
+  >
+    <div class="blog-content">
+
+      <h4 class="blog-title">{blog.data.title}</h4>
+
+      <p class="blog-subtle">
+        by {blog.data.author}
+      </p>
+
+      <!-- 🔥 NEW: preview line -->
+      <p class="blog-preview">
+        {blog.data.description ?? "Click to read this article"}
+      </p>
+
+    </div>
+
+    <div class="blog-footer">
+      <span>Read →</span>
+    </div>
+  </a>
+</li>
+                ))
+              ) : (
+                <div class="empty-state">
+  <p>No blogs yet 🚀</p>
+  <a href="https://github.com" >
+    Be the first to contribute →
+  </a>
+</div>
+              )
+            }
+          </Grid>
+        </div>
+      </section>
+
+    </main>
+
+    <ContactCTA />
+  </div>
+</BaseLayout>
+
+<style>
+/* ================= HERO ================= */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.header-tagline {
+  margin-top: -1rem;
+}
+
+.roles {
+  display: none;
+}
+
+.hero img {
+  aspect-ratio: 5 / 4;
+  object-fit: cover;
+  border-radius: 1.5rem;
+  box-shadow: var(--shadow-md);
+}
+
+@media (min-width: 50em) {
+  .hero {
+    display: grid;
+    grid-template-columns: 6fr 4fr;
+    gap: 3.75rem;
+  }
+
+  .roles {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .hero img {
+    aspect-ratio: 3 / 4;
+    border-radius: 4.5rem;
+  }
+}
+
+/* ================= SECTION ================= */
+.section {
+  display: grid;
+  gap: 2rem;
+}
+
+.section-header {
+  text-align: left;
+  max-width: 50ch;
+  font-size: var(--text-4xl);
+  color: var(--gray-300);
+}
+
+/* ================= PROJECTS ================= */
+.projects {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.project-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  border: 1px solid var(--gray-800);
+  background: var(--gradient-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.project-desc {
+  font-size: var(--text-sm);
+  color: var(--gray-300);
+  margin: 0.4rem 0 0.8rem;
+}
+
+.links {
+  margin-top: auto;
+}
+
+.links a {
+  text-decoration: none;
+  color: var(--accent-regular);
+}
+
+/* ================= BLOGS ================= */
+.blog-link {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.4rem;
+  border-radius: 1.2rem;
+  border: 1px solid var(--gray-800);
+  background: var(--gradient-subtle);
+  text-decoration: none;
+  min-height: 140px;
+  transition: all 0.25s ease;
+}
+
+.blog-link:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent-regular);
+}
+
+.blog-content {
+  flex-grow: 1;
+}
+
+.blog-title {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--gray-0);
+}
+
+.blog-meta {
+  font-size: var(--text-sm);
+  color: var(--accent-regular);
+  font-weight: 600;
+  margin-top: 1rem;
+}
+
+/* ================= CTA ================= */
+.cta {
+  display: flex;
+  justify-content: center;
+}
+
+/* AVATAR */
+.avatar {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 4rem;
+  font-weight: bold;
+
+  background: var(--accent-regular);
+  color: white;
+
+  box-shadow: var(--shadow-md);
+}
+
+/* RESPONSIVE */
+@media (min-width: 50em) {
+  .avatar {
+    width: 260px;
+    height: 260px;
+    font-size: 6rem;
+  }
+}
+
+.avatar-img {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* ================= HERO UPGRADE ================= */
+.upgraded-hero {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 2rem;
+  text-align: center;
+}
+
+/* LEFT SIDE */
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* RIGHT SIDE */
+.hero-avatar {
+  display: flex;
+  justify-content: center;
+}
+
+/* STATS */
+.stats {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.value {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.label {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+}
+
+/* BUTTON */
+.github-btn {
+  margin-top: 1rem;
+  padding: 0.45rem 1.2rem;
+  border-radius: 999px;
+  background: var(--accent-regular);
+  color: white;
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: 0.2s;
+}
+
+.github-btn:hover {
+  opacity: 0.85;
+}
+
+/* DESKTOP */
+@media (min-width: 768px) {
+  .upgraded-hero {
+    display: grid;
+    grid-template-columns: 1fr auto; /* 🔥 key change */
+    align-items: center;
+    gap: 2rem;
+    text-align: left;
+  }
+
+  .hero-content {
+    align-items: flex-start;
+  }
+
+  .hero-avatar {
+    display: flex;
+    justify-content: center; /* centers inside its column */
+  }
+}
+
+.hero-avatar {
+  padding-right: 2rem;
+}
+
+.blog-subtle {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  margin-top: 0.3rem;
+}
+
+.project-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.blog-link {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.4rem;
+  border-radius: 1.2rem;
+  border: 1px solid var(--gray-800);
+  background: var(--gradient-subtle);
+
+  min-height: 180px;
+
+  transition: all 0.25s ease;
+}
+
+.blog-link:hover {
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+  border-color: var(--accent-regular);
+}
+
+/* preview */
+.blog-preview {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+  margin-top: 0.6rem;
+  line-height: 1.4;
+}
+
+/* footer */
+.blog-footer {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: var(--accent-regular);
+  font-weight: 600;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: var(--gray-400);
+}
+
+.empty-state a {
+  display: inline-block;
+  margin-top: 0.5rem;
+  color: var(--accent-regular);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.section {
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  border: 1px solid var(--gray-800);
+  background: var(--gradient-subtle);
+}
+
+a {
+  transition: all 0.2s ease;
+}
+
+a:hover {
+  opacity: 0.85;
+}
+
+/* LINK WRAPPER (same pattern as blog) */
+.project-link {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  padding: 1.4rem;
+  border-radius: 1.2rem;
+  border: 1px solid var(--gray-800);
+  background: var(--gradient-subtle);
+
+  min-height: 180px;
+
+  text-decoration: none;
+  color: inherit;
+
+  /* ⚡ faster + snappier */
+  transition: all 0.18s ease;
+}
+
+/* HOVER */
+.project-link:hover {
+  transform: translateY(-5px) scale(1.01);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+  border-color: var(--accent-regular);
+}
+
+/* CONTENT */
+.project-content {
+  flex-grow: 1;
+}
+
+.project-title {
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--gray-0);
+}
+
+/* description like blog preview */
+.project-desc {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+  margin-top: 0.6rem;
+  line-height: 1.4;
+}
+
+/* FOOTER */
+.project-footer {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: var(--accent-regular);
+  font-weight: 600;
+}
+
+.profile-links {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.profile-links a {
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+
+  font-size: 0.75rem;
+  text-decoration: none;
+
+  border: 1px solid var(--gray-700);
+  color: var(--gray-300);
+
+  transition: all 0.2s ease;
+}
+
+.profile-links a:hover {
+  background: var(--accent-regular);
+  color: white;
+  border-color: var(--accent-regular);
+}
+
+/* ================= ACTIVITY ================= */
+
+.activity-section {
+  margin-top: 1rem;
+}
+
+.activity-heading {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* timeline container */
+.timeline {
+  position: relative;
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* vertical line */
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--gray-800);
+}
+
+/* item */
+.timeline-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+}
+
+/* dot */
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--accent-regular);
+  border-radius: 50%;
+  position: absolute;
+  left: -2px;
+  top: 6px;
+}
+
+/* content */
+.timeline-content {
+  margin-left: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+/* link */
+.timeline-link {
+  font-size: 0.9rem;
+  color: var(--gray-100);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.timeline-link:hover {
+  color: var(--accent-regular);
+}
+
+/* date */
+.timeline-date {
+  font-size: 0.7rem;
+  color: var(--gray-500);
+  margin-top: 0.2rem;
+}
+
+.profile-tags {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.6rem;
+}
+
+/* only affect tags here */
+.tag-pill :global(*) {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+
+</style>

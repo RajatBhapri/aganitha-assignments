@@ -1,0 +1,92 @@
+---
+// src/components/ProfileCard.astro
+interface Props {
+  name: string;
+  position: string;
+  description?: string;
+  avatar?: string;
+  linkedin?: string;
+  github?: string;
+}
+
+const {
+  name = "User",
+  position = "",
+  description = "",
+  linkedin = "#",
+  github = "#"
+} = Astro.props;
+
+// ✅ FIRST LETTER
+const initial = name.charAt(0).toUpperCase();
+---
+
+<div class="profile-card">
+
+  <!-- 🔥 LETTER AVATAR -->
+  <div class="avatar">
+    {initial}
+  </div>
+
+  <h5>{name}</h5>
+  <p class="position">{position}</p>
+
+  {description && <p class="description">{description}</p>}
+  
+  <div class="social-links">
+    {linkedin && <a href={linkedin} >LinkedIn</a>}
+    {github && <a href={github} >GitHub</a>}
+  </div>
+
+</div>
+
+<style>
+.profile-card {
+  border: 1px solid var(--gray-800);
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 300px;
+  background: var(--gradient-subtle);
+}
+
+/* 🔥 AVATAR CIRCLE */
+.avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--accent-regular);
+  color: white;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 2rem;
+  font-weight: bold;
+
+  margin: 0 auto 12px;
+}
+
+/* TEXT */
+.position {
+  color: var(--gray-400);
+  font-weight: 600;
+}
+
+.description {
+  font-size: 14px;
+  color: var(--gray-300);
+}
+
+/* LINKS */
+.social-links {
+  margin-top: 10px;
+}
+
+.social-links a {
+  margin: 0 5px;
+  text-decoration: none;
+  color: var(--accent-regular);
+}
+</style>
