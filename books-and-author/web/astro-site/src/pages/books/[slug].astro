@@ -1,0 +1,72 @@
+---
+import {
+  getCollection,
+  getEntryBySlug,
+} from "astro:content";
+
+export async function getStaticPaths() {
+  const books =
+    await getCollection("books");
+
+  return books.map((book) => ({
+    params: {
+      slug: book.id,
+    },
+  }));
+}
+
+const { slug } = Astro.params;
+
+const book =
+  await getEntryBySlug(
+    "books",
+    slug!
+  );
+---
+
+<html lang="en">
+  <head>
+    <title>
+      {book?.data.title}
+    </title>
+  </head>
+
+  <body
+    style="
+      font-family: sans-serif;
+      padding: 40px;
+      background: #111;
+      color: white;
+    "
+  >
+    <h1>
+      {book?.data.title}
+    </h1>
+
+    <p>
+      {book?.data.author}
+    </p>
+
+    <p>
+      {book?.data.year}
+    </p>
+
+    {
+      book?.data.coverUrl && (
+        <img
+          src={book.data.coverUrl}
+          width="200"
+        />
+      )
+    }
+
+    <div
+      style="
+        margin-top: 30px;
+        line-height: 1.7;
+      "
+    >
+      {book?.data.summary}
+    </div>
+  </body>
+</html>
